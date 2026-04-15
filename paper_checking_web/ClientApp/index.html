@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论文查重系统</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: #f5f7fa; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: #409EFF; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .header h1 { font-size: 24px; }
+        .main-card { background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+        .upload-area { border: 2px dashed #dcdfe6; border-radius: 8px; padding: 40px; text-align: center; margin: 20px 0; }
+        .upload-area.dragover { border-color: #409EFF; background: #ecf5ff; }
+        .progress-section { margin: 20px 0; }
+        .result-section { margin-top: 30px; }
+        .similarity-gauge { text-align: center; padding: 30px; }
+        .similarity-value { font-size: 48px; font-weight: bold; }
+        .similarity-value.pass { color: #67C23A; }
+        .similarity-value.fail { color: #F56C6C; }
+        .section-list { margin-top: 20px; }
+        .section-item { background: #f5f7fa; padding: 15px; margin: 10px 0; border-radius: 4px; }
+        .toolbar { margin: 20px 0; display: flex; gap: 10px; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <div class="header">
+                <h1>📝 论文查重系统</h1>
+                <p>专业、准确、高效的论文检测服务</p>
+            </div>
+
+            <div class="main-card">
+                <!-- 上传区域 -->
+                <el-upload
+                    ref="uploadRef"
+                    drag
+                    :auto-upload="false"
+                    :on-change="handleFileChange"
+                    :limit="1"
+                    accept=".doc,.docx,.pdf,.txt"
+                >
+                    <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+                    <div class="el-upload__text">
+                        拖拽文件到此处或<em>点击上传</em>
+                    </div>
+                    <template #tip>
+                        <div class="el-upload__tip">
+                            支持格式：doc/docx/pdf/txt，最大 100MB
+                        </div>
+                    </template>
+                </el-upload>
+
+                <!-- 比对源选择 -->
+                <div v-if="selectedFile" style="margin: 20px 0;">
+                    <h3>选择比对源：</h3>
+                    <el-checkbox-group v-model="selectedSources" style="margin: 10px 0;">
+                        <el-checkbox 
+                            v-for="source in compareSources" 
+                            :key="source.id" 
+                            :label="source.id"
+                        >
+                            {{ source.name }}
+                        </el-checkbox>
+                    </el-checkbox-group>
+                </div>
+
+                <!-- 开始检测按钮 -->
+                <div class="toolbar" v-if="selectedFile">
+                    <el-button type="primary" size="large" @click="startCheck" :loading="isChecking">
+                        开始检测
+                    </el-button>
+                    <el-button @click="resetForm">重置</el-button>
+                </div>
+
+                <!-- 进度显示 -->
+                <div v-if="isChecking || progress.percent > 0" class="progress-section">
+                    <h3>检测进度：</h3>
+                    <el-progress 
+                        :percentage="progress.percent" 
+                        :status="progress.status"
+                        :format="() => progress.message"
+                    />
+                    <p style="margin-top: 10px; color: #909399;">当前阶段：{{ progress.currentStage }}</p>
+                </div>
+
+                <!-- 检测结果 -->
+                <div v-if="checkResult" class="result-section">
+                    <el-divider>检测结果</el-divider>
+                    
+                    <div class="similarity-gauge">
+                        <div class="similarity-value" :class="checkResult.isPassed ? 'pass' : 'fail'">
+                            {{ checkResult.totalSimilarity }}%
+                        </div>
+                        <p>总文字复制比</p>
+                        <el-tag :type="checkResult.isPassed ? 'success' : 'danger'" size="large">
+                            {{ checkResult.isPassed ? '通过' : '未通过' }}
+                        </el-tag>
+                    </div>
+
+                    <!-- 章节详情 -->
+                    <div class="section-list" v-if="checkResult.details && checkResult.details.length > 0">
+                        <h3>各章节检测结果：</h3>
+                        <div v-for="(detail, index) in checkResult.details" :key="index" class="section-item">
+                            <div style="display: flex; justify-content: space-between;">
+                                <strong>{{ detail.sectionName }}</strong>
+                                <span :style="{ color: getSimilarityColor(detail.similarity) }">
+                                    复制比：{{ detail.similarity }}%
+                                </span>
+                            </div>
+                            <div v-if="detail.matchedSources && detail.matchedSources.length > 0" style="margin-top: 10px; font-size: 13px; color: #606266;">
+                                <div v-for="(source, sIndex) in detail.matchedSources" :key="sIndex">
+                                    • {{ source.sourceName }} ({{ source.similarity }}%)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="toolbar">
+                        <el-button type="success" @click="downloadReport('rtf')">下载 RTF 报告</el-button>
+                        <el-button type="warning" @click="downloadReport('pdf')">下载 PDF 报告</el-button>
+                        <el-button type="primary" @click="downloadReport('docx')">下载 Word 报告</el-button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/element-plus"></script>
+    <script src="https://unpkg.com/@element-plus/icons-vue"></script>
+    <script>
+        const { createApp, ref, reactive, onMounted, onUnmounted } = Vue;
+        const { ElMessage } = ElementPlus;
+
+        const app = createApp({
+            setup() {
+                const selectedFile = ref(null);
+                const selectedSources = ref([1, 2, 3, 5]);
+                const compareSources = ref([]);
+                const isChecking = ref(false);
+                const progress = reactive({ percent: 0, status: '', message: '', currentStage: '' });
+                const checkResult = ref(null);
+                const socket = ref(null);
+                const currentTaskId = ref('');
+
+                const API_BASE = window.location.origin;
+
+                // 加载比对源列表
+                const loadCompareSources = async () => {
+                    try {
+                        const res = await fetch(`${API_BASE}/api/check/sources`);
+                        const data = await res.json();
+                        compareSources.value = data;
+                    } catch (e) {
+                        // 使用默认值
+                        compareSources.value = [
+                            { id: 1, name: '中国学术期刊网络出版总库' },
+                            { id: 2, name: '中国博士学位论文全文数据库' },
+                            { id: 3, name: '中国优秀硕士学位论文全文数据库' },
+                            { id: 4, name: '中国重要会议论文全文数据库' },
+                            { id: 5, name: '互联网资源' }
+                        ];
+                    }
+                };
+
+                // 处理文件选择
+                const handleFileChange = (file) => {
+                    selectedFile.value = file.raw;
+                };
+
+                // 开始检测
+                const startCheck = async () => {
+                    if (!selectedFile.value) {
+                        ElMessage.warning('请先选择文件');
+                        return;
+                    }
+
+                    isChecking.value = true;
+                    progress.percent = 0;
+                    progress.currentStage = '准备中...';
+                    checkResult.value = null;
+
+                    try {
+                        // 上传文件
+                        const formData = new FormData();
+                        formData.append('file', selectedFile.value);
+                        formData.append('sourceIds', JSON.stringify(selectedSources.value));
+
+                        const uploadRes = await fetch(`${API_BASE}/api/check/upload`, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (!uploadRes.ok) throw new Error('上传失败');
+                        
+                        const uploadResult = await uploadRes.json();
+                        currentTaskId.value = uploadResult.taskId;
+
+                        // 连接 SignalR
+                        connectSignalR(currentTaskId.value);
+
+                        // 提交检测任务
+                        const submitRes = await fetch(`${API_BASE}/api/check/submit`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                taskId: currentTaskId.value,
+                                fileName: selectedFile.value.name,
+                                filePath: uploadResult.filePath,
+                                sourceIds: selectedSources.value
+                            })
+                        });
+
+                        if (!submitRes.ok) throw new Error('提交任务失败');
+
+                        ElMessage.success('任务已提交，正在检测中...');
+
+                    } catch (error) {
+                        ElMessage.error(error.message);
+                        isChecking.value = false;
+                    }
+                };
+
+                // 连接 SignalR
+                const connectSignalR = (taskId) => {
+                    // 简单轮询实现（生产环境应使用真正的 SignalR 客户端）
+                    const pollInterval = setInterval(async () => {
+                        try {
+                            const res = await fetch(`${API_BASE}/api/check/status/${taskId}`);
+                            if (res.ok) {
+                                const status = await res.json();
+                                if (status.progress) {
+                                    progress.percent = status.progress.percent;
+                                    progress.currentStage = status.progress.currentStage;
+                                    progress.message = status.progress.message;
+                                    
+                                    if (status.isCompleted) {
+                                        clearInterval(pollInterval);
+                                        isChecking.value = false;
+                                        
+                                        if (status.isSuccess) {
+                                            const resultRes = await fetch(`${API_BASE}/api/check/result/${taskId}`);
+                                            checkResult.value = await resultRes.json();
+                                            ElMessage.success('检测完成！');
+                                        } else {
+                                            ElMessage.error(status.errorMessage || '检测失败');
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error('轮询失败:', e);
+                        }
+                    }, 2000);
+                };
+
+                // 下载报告
+                const downloadReport = async (format) => {
+                    if (!checkResult.value) return;
+                    
+                    const url = `${API_BASE}/api/check/report/${currentTaskId.value}?format=${format}`;
+                    window.open(url, '_blank');
+                    ElMessage.success(`正在下载${format.toUpperCase()}报告...`);
+                };
+
+                // 重置表单
+                const resetForm = () => {
+                    selectedFile.value = null;
+                    progress.percent = 0;
+                    progress.message = '';
+                    progress.currentStage = '';
+                    checkResult.value = null;
+                    currentTaskId.value = '';
+                };
+
+                // 获取相似度颜色
+                const getSimilarityColor = (similarity) => {
+                    if (similarity < 10) return '#67C23A';
+                    if (similarity < 30) return '#E6A23C';
+                    return '#F56C6C';
+                };
+
+                onMounted(() => {
+                    loadCompareSources();
+                });
+
+                return {
+                    selectedFile,
+                    selectedSources,
+                    compareSources,
+                    isChecking,
+                    progress,
+                    checkResult,
+                    handleFileChange,
+                    startCheck,
+                    downloadReport,
+                    resetForm,
+                    getSimilarityColor
+                };
+            }
+        });
+
+        app.use(ElementPlus);
+        for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+            app.component(key, component);
+        }
+        app.mount('#app');
+    </script>
+</body>
+</html>

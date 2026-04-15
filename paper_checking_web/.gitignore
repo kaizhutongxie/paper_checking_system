@@ -1,0 +1,12 @@
+# 全局忽略文件
+bin/
+obj/
+*.user
+*.suo
+*.dll
+*.exe
+*.pdb
+*.xml
+*.log
+data/
+appsettings.local.json

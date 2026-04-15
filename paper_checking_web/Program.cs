@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using paper_checking_web.Data;
-using paper_checking_web.Hubs;
 using paper_checking_web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,43 +13,27 @@ builder.Services.AddSwaggerGen(c =>
     { 
         Title = "论文查重系统 API", 
         Version = "v1",
-        Description = "基于.NET 10 的跨平台论文查重系统，支持麒麟 V10 等 Linux 环境"
+        Description = "基于.NET 8 的跨平台论文查重系统，支持麒麟 V10 等 Linux 环境"
     });
 });
-
-// 添加 SignalR 实时通信
-builder.Services.AddSignalR();
 
 // 添加数据库上下文（使用 SQLite）
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=paper_check.db"));
 
 // 注册文档转换服务
-builder.Services.AddScoped<IDocumentConverter, TxtConverter>();
-builder.Services.AddScoped<IDocumentConverter, PdfConverter>();
-builder.Services.AddScoped<IDocumentConverter, WordConverter>();
+builder.Services.AddScoped<ConverterFactory>();
+builder.Services.AddScoped<TxtConverter>();
+builder.Services.AddScoped<PdfConverter>();
+builder.Services.AddScoped<WordConverter>();
 
 // 注册核心查重服务
-builder.Services.Configure<PaperCheckServiceOptions>(options =>
-{
-    options.UseWindowsService = true; // 默认使用 Windows 代理服务
-    options.ServiceUrl = builder.Configuration["WindowsService:Url"] ?? "http://localhost:5001";
-    options.TimeoutSeconds = 300;
-});
-builder.Services.AddHttpClient<IPaperCheckService, PaperCheckService>();
-builder.Services.AddScoped<IPaperCheckService, PaperCheckService>();
+builder.Services.AddScoped<PaperCheckService>();
 
 // 注册报告生成服务
-builder.Services.AddScoped<IReportGenerator, ReportGenerator>();
+builder.Services.AddScoped<ReportGenerator>();
 
-// 注册进度通知服务
-builder.Services.AddScoped<IProgressNotificationService, ProgressNotificationService>();
-builder.Services.AddSingleton<TaskStateManager>();
-
-// 配置静态文件服务（用于前端页面）
-builder.Services.AddStaticFiles();
-
-// 添加 CORS 支持（前端分离部署时需要）
+// 添加 CORS 支持
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -74,15 +57,6 @@ app.UseHttpsRedirection();
 app.UseCors();
 app.UseAuthorization();
 
-// 启用静态文件服务（用于前端页面）
-app.UseStaticFiles();
-
-// 映射 SignalR Hub
-app.MapHub<CheckProgressHub>("/hubs/check-progress");
-
-// 回退路由到前端页面
-app.MapFallbackToFile("index.html");
-
 app.MapControllers();
 
 // 确保数据目录存在
@@ -91,19 +65,19 @@ EnsureDataDirectories();
 // 初始化数据库
 InitializeDatabase(app);
 
+Console.WriteLine("论文查重系统启动成功！");
+Console.WriteLine("访问 Swagger UI: http://localhost:5000/swagger");
+
 app.Run();
 
 void EnsureDataDirectories()
 {
     var directories = new[]
     {
-        paper_checking_web.Config.AppConfig.ProgramParam.TxtPaperSourcePath,
-        paper_checking_web.Config.AppConfig.ProgramParam.ToCheckTxtPaperPath,
-        paper_checking_web.Config.AppConfig.ProgramParam.ReportPath,
-        paper_checking_web.Config.AppConfig.ProgramParam.ReportDataPath,
-        "/data/uploads",
-        "/data/reports",
-        "/data/temp"
+        "data/uploads",
+        "data/reports",
+        "data/temp",
+        "reports"
     };
 
     foreach (var dir in directories)

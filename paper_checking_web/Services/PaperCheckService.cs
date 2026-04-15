@@ -25,19 +25,19 @@ namespace paper_checking_web.Services
     public class PaperCheckService : IPaperCheckService
     {
         private readonly ILogger<PaperCheckService> _logger;
-        private readonly IDocumentConverter _documentConverter;
-        private readonly IReportGenerator _reportGenerator;
+        private readonly ConverterFactory _converterFactory;
+        private readonly ReportGenerator _reportGenerator;
         
         // 自建库内存缓存（实际应使用数据库）
         private readonly List<string> _referenceLibrary = new();
 
         public PaperCheckService(
             ILogger<PaperCheckService> logger,
-            IDocumentConverter documentConverter,
-            IReportGenerator reportGenerator)
+            ConverterFactory converterFactory,
+            ReportGenerator reportGenerator)
         {
             _logger = logger;
-            _documentConverter = documentConverter;
+            _converterFactory = converterFactory;
             _reportGenerator = reportGenerator;
             
             // 初始化示例参考库
@@ -55,7 +55,11 @@ namespace paper_checking_web.Services
             {
                 // 阶段 1: 文档解析 (0-20%)
                 ReportProgress(progress, task.TaskId, 5, "文档解析", "正在读取文档...");
-                var fullText = await _documentConverter.ConvertToTextAsync(task.FilePath);
+                var extension = Path.GetExtension(task.FilePath).TrimStart('.');
+                var converter = _converterFactory.GetConverter(extension, new SystemSettings());
+                if (converter == null)
+                    throw new Exception($"不支持的文件格式：{extension}");
+                var fullText = await converter.ConvertToTextAsync(task.FilePath);
                 
                 if (string.IsNullOrWhiteSpace(fullText))
                 {
@@ -122,7 +126,7 @@ namespace paper_checking_web.Services
                 };
 
                 // 生成报告文件
-                await _reportGenerator.GenerateRtfReportAsync(result, task);
+                await _reportGenerator.GenerateRtfAsync(result, $"reports/{task.TaskId}.rtf");
 
                 ReportProgress(progress, task.TaskId, 100, "检测完成", "报告已生成");
 

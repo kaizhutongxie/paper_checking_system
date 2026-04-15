@@ -1,99 +1,52 @@
-```
-# Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-build/
-bld/
-[Bb]in/
-[Oo]bj/
-
-# CoreCLR native images
-*.so
-*.dylib
+# Compiled and build artifacts
+*.o
+*.obj
+*.exe
 *.dll
+*.so
+*.a
+*.out
 
-# Configuration files
-appsettings.json
-appsettings.*.json
+# Dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+target/
+.gradle/
 
-# Environment specific settings
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Environment
 .env
 .env.local
 *.env.*
 
-# IDE
-.vs/
+# Editors
 .vscode/
-*.userprefs
-*.user
-*.suo
-*.userosscache
-*.sln.docstates
+.idea/
+*.swp
+*.swo
 
-# OS generated files
+# System files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
-desktop.ini
 
-# Log files
-*.log
+# Coverage
+coverage/
+htmlcov/
+.coverage
 
-# Temporary files
-*.tmp
-*.temp
-*~
-
-# Package management
-packages/
-project.lock.json
-project.fragment.lock.json
-artifacts/
-
-# Test results
-testresults/
-TestResults/
-*.trx
-
-# User-specific files
-Personal/
-personal/
-*.userprefs
-
-# ASP.NET Core
-**/bin/Debug/**
-**/bin/Release/**
-**/obj/**
-
-# NuGet
-*.nupkg
-NuGet.exe
-nuget.exe
-
-# Visual Studio Code
-.vscode/tasks.json
-.vscode/launch.json
-
-# Temporary file used by dotnet watch
-dotnet-compile-*
-
-# Runtime Store related
-runtime-store/
-
-# Compressed archives
+# Compressed files
 *.zip
-*.tar.gz
-*.tar.bz2
-*.tar.xz
 *.gz
+*.tar
+*.tgz
 *.bz2
 *.xz
 *.7z
@@ -108,4 +61,3 @@ runtime-store/
 *.Z
 *.lz
 *.lzo
-```

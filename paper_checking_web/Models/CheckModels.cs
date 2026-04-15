@@ -103,13 +103,90 @@ public class SystemSettings
 /// </summary>
 public class CheckProgress
 {
+    public string TaskId { get; set; } = string.Empty;
+    public int Percent { get; set; }
+    public string CurrentStage { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    
+    // 兼容旧版字段
     public int TotalFiles { get; set; }
     public int ConvertedFiles { get; set; }
     public int CheckedFiles { get; set; }
     public int ExportedFiles { get; set; }
-    public int ProgressPercent { get; set; }
+    public int ProgressPercent => Percent;
     public string Status { get; set; } = "idle";
     public List<string> ErrorPapers { get; set; } = new();
+}
+
+/// <summary>
+/// 查重任务
+/// </summary>
+public class CheckTask
+{
+    public string TaskId { get; set; } = Guid.NewGuid().ToString();
+    public string FileName { get; set; } = string.Empty;
+    public string FilePath { get; set; } = string.Empty;
+    public int Threshold { get; set; } = 13;
+    public bool IncludeStatisTable { get; set; } = true;
+    public DateTime CreateTime { get; set; } = DateTime.Now;
+}
+
+/// <summary>
+/// 查重结果
+/// </summary>
+public class CheckResult
+{
+    public string TaskId { get; set; } = string.Empty;
+    public decimal TotalSimilarity { get; set; }
+    public bool IsPassed { get; set; }
+    public string ReportPath { get; set; } = string.Empty;
+    public DateTime CheckTime { get; set; }
+    public List<SectionDetail> Details { get; set; } = new();
+    public CheckStatistics Statistics { get; set; } = new();
+}
+
+/// <summary>
+/// 章节详情
+/// </summary>
+public class SectionDetail
+{
+    public string SectionName { get; set; } = string.Empty;
+    public decimal Similarity { get; set; }
+    public List<MatchedSource> MatchedSources { get; set; } = new();
+    public int SectionOrder { get; set; }
+}
+
+/// <summary>
+/// 匹配源
+/// </summary>
+public class MatchedSource
+{
+    public string SourceName { get; set; } = string.Empty;
+    public decimal Similarity { get; set; }
+    public string MatchedText { get; set; } = string.Empty;
+    public int MatchPosition { get; set; }
+}
+
+/// <summary>
+/// 查重统计
+/// </summary>
+public class CheckStatistics
+{
+    public int TotalCharacters { get; set; }
+    public int TotalSections { get; set; }
+    public int MatchedSections { get; set; }
+    public decimal MaxSimilarity { get; set; }
+    public decimal MinSimilarity { get; set; }
+}
+
+/// <summary>
+/// 比对源配置
+/// </summary>
+public class CompareSource
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public bool IsEnabled { get; set; }
 }
 
 /// <summary>

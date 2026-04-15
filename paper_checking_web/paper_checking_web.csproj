@@ -26,6 +26,9 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0" />
+    
+    <!-- SignalR 实时通信 -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" Version="2.2.0" />
   </ItemGroup>
 
 </Project>
